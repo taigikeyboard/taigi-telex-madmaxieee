@@ -76,7 +76,7 @@ public enum TelexRules {
     // Step 4: Apply tone mark if present at end
     result = applyToneMark(result, mode: mode)
 
-    return result
+    return result.precomposedStringWithCanonicalMapping
   }
 
   public static func applyConsonantMapping(_ input: String, mode: InputMode) -> String {
@@ -189,7 +189,8 @@ public enum TelexRules {
       let suffix = suffixStartIdx < lower.endIndex ? String(lower[suffixStartIdx...]) : ""
 
       // Check for exception cases first
-      if let exceptionPos = tonePositionForException(cluster: clusterText, suffix: suffix, mode: mode, start: start)
+      if let exceptionPos = tonePositionForException(
+        cluster: clusterText, suffix: suffix, mode: mode, start: start)
       {
         return exceptionPos
       }
@@ -302,8 +303,9 @@ public enum TelexRules {
   }
 
   /// Check for tone position exception cases based on cluster content, following suffix, and input mode.
-  private static func tonePositionForException(cluster: String, suffix: String, mode: InputMode, start: Int) -> Int?
-  {
+  private static func tonePositionForException(
+    cluster: String, suffix: String, mode: InputMode, start: Int
+  ) -> Int? {
     switch mode {
     case .tl:
       if cluster == "iu" {
@@ -322,7 +324,9 @@ public enum TelexRules {
         return start
       }
       // oan, oat, oah → mark on a
-      if cluster == "oa" && (suffix.hasPrefix("n") || suffix.hasPrefix("t") || suffix.hasPrefix("h")) {
+      if cluster == "oa"
+        && (suffix.hasPrefix("n") || suffix.hasPrefix("t") || suffix.hasPrefix("h"))
+      {
         return start + 1
       }
       // oeh → mark on e

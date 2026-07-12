@@ -599,6 +599,37 @@ struct TelexRulesTests {
     }
   }
 
+  @Suite("Unicode NFC normalization")
+  struct UnicodeNFCNormalizationTests {
+    @Test("TL tones use precomposed scalars when available")
+    func tlToneIsPrecomposed() {
+      let output = TelexRules.transform("av", mode: .tl)
+
+      #expect(output.unicodeScalars.map(\.value) == [0x00E1])
+    }
+
+    @Test("POJ o-dot-right preserves the uncomposable mark after a precomposed tone")
+    func pojODotRightAndToneHaveCanonicalScalars() {
+      let output = TelexRules.transform("oow", mode: .poj)
+
+      #expect(output.unicodeScalars.map(\.value) == [0x014D, 0x0358])
+    }
+
+    @Test("Uncomposable POJ dot above right is retained")
+    func pojODotRightIsRetained() {
+      let output = TelexRules.transform("oo", mode: .poj)
+
+      #expect(output.unicodeScalars.map(\.value) == [0x006F, 0x0358])
+    }
+
+    @Test("Non-combinable output remains unchanged")
+    func nonCombinableOutputIsUnchanged() {
+      let output = TelexRules.transform("bv", mode: .tl)
+
+      #expect(output.unicodeScalars.map(\.value) == [0x0062, 0x0076])
+    }
+  }
+
   @Suite("Extra Syllable Test Cases")
   struct POJSyllableTransformTestCases {
     @Test("POJ mode syllable transformations", arguments: SyllableTestCase.pojExtra)

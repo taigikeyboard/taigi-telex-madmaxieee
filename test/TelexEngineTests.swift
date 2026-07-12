@@ -100,6 +100,24 @@ struct TelexEngineTests {
 
   @Suite("Tone Key Processing")
   struct ToneKeyProcessingTests {
+    @Test("Displayed composition and committed output use NFC scalars")
+    func displayedAndCommittedToneUseNFC() {
+      let engine = TelexEngine(inputMode: .tl)
+      let displayed = processString("av", engine: engine).last
+
+      guard case let .update(display: display) = displayed else {
+        Issue.record("Expected displayed composition, got \(String(describing: displayed))")
+        return
+      }
+      #expect(display.unicodeScalars.map(\.value) == [0x00E1])
+
+      guard case let .commitAndPassthrough(committed) = engine.process(" ") else {
+        Issue.record("Expected committed composition")
+        return
+      }
+      #expect(committed.unicodeScalars.map(\.value) == [0x00E1])
+    }
+
     @Test("Apply tone to syllable", arguments: [InputMode.tl, InputMode.poj])
     func applyToneToSyllable(mode: InputMode) {
       let engine = TelexEngine(inputMode: mode)
