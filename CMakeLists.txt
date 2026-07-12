@@ -24,6 +24,12 @@ add_library(TaigiTelexLib STATIC
     src/lib/TelexEngine.swift
 )
 
+add_library(TaigiTelexAdapter STATIC
+    src/adapter/ClientOperationAdapter.swift
+)
+
+target_link_libraries(TaigiTelexAdapter TaigiTelexLib)
+
 # Executable target
 add_executable(TaigiTelex
     MACOSX_BUNDLE
@@ -31,7 +37,7 @@ add_executable(TaigiTelex
     src/controller.swift
 )
 
-target_link_libraries(TaigiTelex TaigiTelexLib)
+target_link_libraries(TaigiTelex TaigiTelexAdapter TaigiTelexLib)
 
 set(APP_PATH "${CMAKE_CURRENT_BINARY_DIR}/TaigiTelex.app/Contents")
 

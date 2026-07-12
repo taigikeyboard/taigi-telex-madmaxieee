@@ -1,4 +1,5 @@
 import InputMethodKit
+import TaigiTelexAdapter
 import TaigiTelexLib
 
 @objc(TaigiTelexInputController)
@@ -115,48 +116,42 @@ class TaigiTelexInputController: IMKInputController {
   }
 
   private func handleBackspace(client: IMKTextInput) -> Bool {
-    guard let result = engine.backspace() else {
-      return false
-    }
-
-    switch result {
-    case let .update(display):
-      updateMarkedText(display, client: client)
-      return true
-    default:
-      return true
-    }
+    let plan = ClientOperationAdapter.backspace(engine.backspace())
+    apply(plan, client: client)
+    return plan.isHandled
   }
 
-  private func updateMarkedText(_ display: String, client: IMKTextInput) {
-    if display.isEmpty {
-      client.setMarkedText(
-        "",
-        selectionRange: NSRange(location: 0, length: 0),
-        replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
-      )
-    } else {
-      client.setMarkedText(
-        display,
-        selectionRange: NSRange(location: display.utf16.count, length: 0),
-        replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
-      )
+  private func apply(_ plan: ClientOperationPlan, client: IMKTextInput) {
+    for operation in plan.operations {
+      switch operation {
+      case let .setMarkedText(text, selectionLength):
+        client.setMarkedText(
+          text,
+          selectionRange: NSRange(location: selectionLength, length: 0),
+          replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
+        )
+      case let .insertText(text):
+        client.insertText(
+          text,
+          replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
+        )
+      }
     }
   }
 
   private func handleReturn(client: IMKTextInput) -> Bool {
-    guard !engine.isEmpty else {
-      return false
+    let display: String?
+    if case let .composing(_, composingDisplay) = engine.state {
+      display = composingDisplay
+    } else {
+      display = nil
     }
-
-    if case let .composing(_, display) = engine.state {
-      client.insertText(
-        display,
-        replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
-      )
+    let plan = ClientOperationAdapter.returnKey(composingDisplay: display)
+    apply(plan, client: client)
+    if plan.isHandled {
       engine.reset()
     }
-    return true
+    return plan.isHandled
   }
 
   private func handleCharacterInput(_ event: NSEvent, client: IMKTextInput, sender: Any!) -> Bool {
@@ -174,33 +169,9 @@ class TaigiTelexInputController: IMKInputController {
     client: IMKTextInput,
     sender: Any!,
   ) -> Bool {
-    switch result {
-    case let .update(display):
-      updateMarkedText(display, client: client)
-      return true
-
-    case let .commitAndPassthrough(committedText):
-      client.insertText(
-        committedText,
-        replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
-      )
-      return false
-
-    case let .commitAndUpdate(committedText, newDisplay):
-      client.insertText(
-        committedText,
-        replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
-      )
-      updateMarkedText(newDisplay, client: client)
-      return true
-
-    case let .commit(committedText):
-      client.insertText(
-        committedText,
-        replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
-      )
-      return true
-    }
+    let plan = ClientOperationAdapter.process(result)
+    apply(plan, client: client)
+    return plan.isHandled
   }
 
   private func createKeyEvent(_ event: NSEvent, char: Character) -> NSEvent? {
@@ -222,10 +193,7 @@ class TaigiTelexInputController: IMKInputController {
     guard let client = sender as? IMKTextInput else { return }
 
     if case let .composing(_, display) = engine.state {
-      client.insertText(
-        display,
-        replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
-      )
+      apply(ClientOperationAdapter.commit(display), client: client)
       engine.reset()
     }
 
@@ -234,11 +202,7 @@ class TaigiTelexInputController: IMKInputController {
 
   override func cancelComposition() {
     if let client = client() {
-      client.setMarkedText(
-        "",
-        selectionRange: NSRange(location: 0, length: 0),
-        replacementRange: NSRange(location: NSNotFound, length: NSNotFound),
-      )
+      apply(ClientOperationAdapter.cancel(), client: client)
     }
 
     engine.reset()

@@ -16,18 +16,24 @@ let package = Package(
       path: "src/lib",
       swiftSettings: []
     ),
+    .target(
+      name: "TaigiTelexAdapter",
+      dependencies: ["TaigiTelexLib"],
+      path: "src/adapter",
+      swiftSettings: []
+    ),
     // Test target
     .testTarget(
       name: "TaigiTelexTests",
-      dependencies: ["TaigiTelexLib"],
+      dependencies: ["TaigiTelexLib", "TaigiTelexAdapter"],
       path: "test"
     ),
     // Executable target for LSP support (includes all files)
     .executableTarget(
       name: "TaigiTelex",
-      dependencies: ["TaigiTelexLib"],
+      dependencies: ["TaigiTelexLib", "TaigiTelexAdapter"],
       path: "src",
-      exclude: ["lib"],
+      exclude: ["adapter", "lib"],
       swiftSettings: []
     ),
     // Fuzz test executable (not run by `swift test`)
