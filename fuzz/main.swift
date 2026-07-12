@@ -108,6 +108,21 @@ func fuzzAssert(
 
 // MARK: - Invariant Checks
 
+/// Immutable engine state captured before processing an input event.
+struct PreEventSnapshot {
+  let isEmpty: Bool
+  let composingRaw: String?
+
+  init(engine: TelexEngine) {
+    isEmpty = engine.isEmpty
+    if case let .composing(raw, _) = engine.state {
+      composingRaw = raw
+    } else {
+      composingRaw = nil
+    }
+  }
+}
+
 /// Check state consistency: result type must match resulting engine state
 func checkStateConsistency(
   engine: TelexEngine, result: TelexResult, file: StaticString = #file, line: UInt = #line
@@ -146,10 +161,10 @@ func checkStateConsistency(
 /// Check that escape conditions are not missed
 /// If an escape condition is met, the result must NOT be .update
 func checkNoMissedEscapes(
-  engine: TelexEngine, char: Character, result: TelexResult,
+  snapshot: PreEventSnapshot, mode: InputMode, char: Character, result: TelexResult,
   file: StaticString = #file, line: UInt = #line
 ) {
-  guard case let .composing(currentRaw, _) = engine.state else { return }
+  guard let currentRaw = snapshot.composingRaw else { return }
 
   // Tone escape: same tone key pressed twice
   if TelexRules.isToneEscape(currentRaw, char: char) {
@@ -180,7 +195,7 @@ func checkNoMissedEscapes(
   }
 
   // POJ double transform escape: triple n or o
-  if TelexRules.isDoubleTransformEscape(currentRaw, char: char, mode: engine.inputMode) {
+  if TelexRules.isDoubleTransformEscape(currentRaw, char: char, mode: mode) {
     fuzzAssert(
       !matchesUpdate(result),
       "MISSED DOUBLE TRANSFORM ESCAPE: isDoubleTransformEscape('\(currentRaw)', '\(char)') is true, but result was .update",
@@ -196,10 +211,10 @@ func checkNoMissedEscapes(
 
 /// Check that tone override is handled correctly
 func checkToneOverride(
-  engine: TelexEngine, char: Character, result: TelexResult,
+  snapshot: PreEventSnapshot, char: Character, result: TelexResult,
   file: StaticString = #file, line: UInt = #line
 ) {
-  guard case let .composing(currentRaw, _) = engine.state else { return }
+  guard let currentRaw = snapshot.composingRaw else { return }
 
   if TelexRules.isToneOverride(currentRaw, char: char) {
     fuzzAssert(
@@ -212,10 +227,10 @@ func checkToneOverride(
 
 /// Check hyphen key behavior matches expected trailing count logic
 func checkHyphenBehavior(
-  engine: TelexEngine, char: Character, result: TelexResult,
+  snapshot: PreEventSnapshot, char: Character, result: TelexResult,
   file: StaticString = #file, line: UInt = #line
 ) {
-  guard case let .composing(currentRaw, _) = engine.state else { return }
+  guard let currentRaw = snapshot.composingRaw else { return }
   guard TelexKeys.isHyphenKey(char) else { return }
 
   let trailingCount = TelexRules.countTrailingHyphenKeys(currentRaw)
@@ -247,10 +262,10 @@ func checkHyphenBehavior(
 
 /// Check that non-letter input from empty state produces .commitAndPassthrough
 func checkNonLetterPassthrough(
-  engine: TelexEngine, char: Character, result: TelexResult,
+  snapshot: PreEventSnapshot, char: Character, result: TelexResult,
   file: StaticString = #file, line: UInt = #line
 ) {
-  if engine.isEmpty && !TelexKeys.isLetter(char) {
+  if snapshot.isEmpty && !TelexKeys.isLetter(char) {
     fuzzAssert(
       matchesCommitAndPassthrough(result),
       "NON-LETTER PASSTHROUGH: expected .commitAndPassthrough for non-letter '\(char)' on empty state, got \(result)",
@@ -282,6 +297,54 @@ func checkDeterminism(
     "NON-DETERMINISTIC: same sequence produced different results",
     file: file, line: line
   )
+}
+
+/// Exercise every transition oracle branch independently of random generation.
+func runRegressionCoverage() {
+  func checkTransition(
+    mode: InputMode, prefix: String, char: Character, expected: (TelexResult) -> Bool,
+    description: String
+  ) {
+    let engine = TelexEngine(inputMode: mode)
+    for prefixChar in prefix {
+      _ = engine.process(prefixChar)
+    }
+
+    let snapshot = PreEventSnapshot(engine: engine)
+    let result = engine.process(char)
+
+    fuzzAssert(expected(result), "REGRESSION \(description): got \(result)")
+    checkNonLetterPassthrough(snapshot: snapshot, char: char, result: result)
+    checkNoMissedEscapes(snapshot: snapshot, mode: mode, char: char, result: result)
+    checkToneOverride(snapshot: snapshot, char: char, result: result)
+    checkHyphenBehavior(snapshot: snapshot, char: char, result: result)
+    checkStateConsistency(engine: engine, result: result)
+  }
+
+  checkTransition(
+    mode: .tl, prefix: "", char: ".", expected: matchesCommitAndPassthrough,
+    description: "empty non-letter passthrough")
+  checkTransition(
+    mode: .tl, prefix: "av", char: "v", expected: matchesCommit,
+    description: "pre-state tone escape")
+  checkTransition(
+    mode: .tl, prefix: "az", char: "z", expected: matchesCommit,
+    description: "consonant escape")
+  checkTransition(
+    mode: .poj, prefix: "ann", char: "n", expected: matchesCommit,
+    description: "POJ triple transform escape")
+  checkTransition(
+    mode: .tl, prefix: "av", char: "y", expected: matchesUpdate,
+    description: "tone override")
+  checkTransition(
+    mode: .tl, prefix: "a", char: "f", expected: matchesCommitAndUpdate,
+    description: "hyphen trailing count zero")
+  checkTransition(
+    mode: .tl, prefix: "af", char: "f", expected: matchesUpdate,
+    description: "hyphen trailing count one")
+  checkTransition(
+    mode: .tl, prefix: "aff", char: "f", expected: matchesCommit,
+    description: "hyphen trailing count two")
 }
 
 // MARK: - Result Type Helpers
@@ -316,6 +379,8 @@ func runFuzzTest(config: FuzzConfig) {
   print("  Modes: TL, POJ")
   print("")
 
+  runRegressionCoverage()
+
   var generator = RandomInputGenerator(seed: config.seed)
   var totalAssertions = 0
   var totalChars = 0
@@ -330,17 +395,16 @@ func runFuzzTest(config: FuzzConfig) {
       for char in sequence {
         totalChars += 1
 
-        // Run all invariant checks before processing
-        checkNonLetterPassthrough(engine: engine, char: char, result: .update(display: ""))
-
-        // Process the character
+        // Capture pre-state, then process the event exactly once.
+        let snapshot = PreEventSnapshot(engine: engine)
         let result = engine.process(char)
 
-        // Run all invariant checks after processing
+        // State consistency uses post-state; transition checks use pre-state.
         checkStateConsistency(engine: engine, result: result)
-        checkNoMissedEscapes(engine: engine, char: char, result: result)
-        checkToneOverride(engine: engine, char: char, result: result)
-        checkHyphenBehavior(engine: engine, char: char, result: result)
+        checkNonLetterPassthrough(snapshot: snapshot, char: char, result: result)
+        checkNoMissedEscapes(snapshot: snapshot, mode: mode, char: char, result: result)
+        checkToneOverride(snapshot: snapshot, char: char, result: result)
+        checkHyphenBehavior(snapshot: snapshot, char: char, result: result)
 
         // Check transform safety on current raw state
         if case let .composing(raw, _) = engine.state {
