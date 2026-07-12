@@ -26,6 +26,7 @@ add_library(TaigiTelexLib STATIC
 
 add_library(TaigiTelexAdapter STATIC
     src/adapter/ClientOperationAdapter.swift
+    src/adapter/InputSession.swift
 )
 
 target_link_libraries(TaigiTelexAdapter TaigiTelexLib)

@@ -1,20 +1,11 @@
 import InputMethodKit
 import TaigiTelexAdapter
-import TaigiTelexLib
 
 @objc(TaigiTelexInputController)
 class TaigiTelexInputController: IMKInputController {
-  private var engine: TelexEngine
-
-  private static let currentModeKey = "taigiTelex.currentMode"
+  private let session = InputSession()
 
   override init!(server: IMKServer!, delegate: Any!, client inputClient: Any!) {
-    // Read last used mode from UserDefaults, fallback to TL
-    let savedModeString =
-      UserDefaults.standard.string(forKey: Self.currentModeKey)
-      ?? InputMode.tl.rawValue
-    let initialMode = InputMode(rawValue: savedModeString) ?? .tl
-    engine = TelexEngine(inputMode: initialMode)
     super.init(server: server, delegate: delegate, client: inputClient)
   }
 
@@ -24,47 +15,32 @@ class TaigiTelexInputController: IMKInputController {
       return
     }
 
-    guard let newMode = InputMode(rawValue: modeId) else {
+    guard let client = sender as? IMKTextInput else {
       return
     }
-
-    // Only update if mode actually changed
-    if engine.inputMode != newMode {
-
-      // Persist the mode change
-      UserDefaults.standard.set(newMode.rawValue, forKey: Self.currentModeKey)
-
-      // Commit any pending composition before switching
-      if !engine.isEmpty {
-        commitComposition(sender)
-      }
-
-      // Create new engine with new mode
-      engine = TelexEngine(inputMode: newMode)
-    } else {
+    let plan = session.selectSource(modeId)
+    apply(plan, client: client)
+    if !plan.operations.isEmpty {
+      super.commitComposition(sender)
     }
   }
 
   /// Called when the application becomes active
   override func activateServer(_ sender: Any!) {
     super.activateServer(sender)
-    // Ensure we're in sync with the persisted mode when app becomes active
-    let savedModeString =
-      UserDefaults.standard.string(forKey: Self.currentModeKey)
-      ?? InputMode.tl.rawValue
-    if let savedMode = InputMode(rawValue: savedModeString), engine.inputMode != savedMode {
-      if !engine.isEmpty {
-        commitComposition(sender)
-      }
-      engine = TelexEngine(inputMode: savedMode)
+    if let client = sender as? IMKTextInput {
+      apply(session.activate(), client: client)
     }
   }
 
   /// Called when the application resigns active
   override func deactivateServer(_ sender: Any!) {
-    // Commit any pending composition when leaving the app
-    if !engine.isEmpty {
-      commitComposition(sender)
+    if let client = sender as? IMKTextInput {
+      let plan = session.deactivate()
+      apply(plan, client: client)
+      if !plan.operations.isEmpty {
+        super.commitComposition(sender)
+      }
     }
     super.deactivateServer(sender)
   }
@@ -95,8 +71,12 @@ class TaigiTelexInputController: IMKInputController {
     if modifierFlags.contains(.command) || modifierFlags.contains(.control)
       || modifierFlags.contains(.option)
     {
-      if !engine.isEmpty {
-        commitComposition(sender)
+      if let client = sender as? IMKTextInput {
+        let plan = session.commitComposition()
+        apply(plan, client: client)
+        if !plan.operations.isEmpty {
+          super.commitComposition(sender)
+        }
       }
       return true
     }
@@ -116,7 +96,7 @@ class TaigiTelexInputController: IMKInputController {
   }
 
   private func handleBackspace(client: IMKTextInput) -> Bool {
-    let plan = ClientOperationAdapter.backspace(engine.backspace())
+    let plan = session.backspace()
     apply(plan, client: client)
     return plan.isHandled
   }
@@ -140,17 +120,8 @@ class TaigiTelexInputController: IMKInputController {
   }
 
   private func handleReturn(client: IMKTextInput) -> Bool {
-    let display: String?
-    if case let .composing(_, composingDisplay) = engine.state {
-      display = composingDisplay
-    } else {
-      display = nil
-    }
-    let plan = ClientOperationAdapter.returnKey(composingDisplay: display)
+    let plan = session.returnKey()
     apply(plan, client: client)
-    if plan.isHandled {
-      engine.reset()
-    }
     return plan.isHandled
   }
 
@@ -159,17 +130,7 @@ class TaigiTelexInputController: IMKInputController {
       return false
     }
 
-    let result = engine.process(firstChar)
-    return processEngineResult(result, event: event, client: client, sender: sender)
-  }
-
-  private func processEngineResult(
-    _ result: TelexResult,
-    event: NSEvent,
-    client: IMKTextInput,
-    sender: Any!,
-  ) -> Bool {
-    let plan = ClientOperationAdapter.process(result)
+    let plan = session.process(firstChar)
     apply(plan, client: client)
     return plan.isHandled
   }
@@ -192,20 +153,18 @@ class TaigiTelexInputController: IMKInputController {
   override func commitComposition(_ sender: Any!) {
     guard let client = sender as? IMKTextInput else { return }
 
-    if case let .composing(_, display) = engine.state {
-      apply(ClientOperationAdapter.commit(display), client: client)
-      engine.reset()
-    }
+    apply(session.commitComposition(), client: client)
 
     super.commitComposition(sender)
   }
 
   override func cancelComposition() {
     if let client = client() {
-      apply(ClientOperationAdapter.cancel(), client: client)
+      apply(session.cancelComposition(), client: client)
+    } else {
+      _ = session.cancelComposition()
     }
 
-    engine.reset()
     super.cancelComposition()
   }
 }
