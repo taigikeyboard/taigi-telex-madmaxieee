@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.26)
 project(TaigiTelex LANGUAGES Swift)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS deployment target")
 
 set(ARCH "native" CACHE STRING "Architecture to build")
 

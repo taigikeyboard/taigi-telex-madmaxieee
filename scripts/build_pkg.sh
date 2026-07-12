@@ -71,7 +71,14 @@ if [[ "$UNIVERSAL" == true ]]; then
     
     # Verify universal binary
     echo "Verifying universal binary..."
-    lipo -info "${BUILD_DIR}/universal/${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
+    UNIVERSAL_BINARY="${BUILD_DIR}/universal/${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
+    lipo -info "${UNIVERSAL_BINARY}"
+    for arch in x86_64 arm64; do
+        if ! vtool -arch "${arch}" -show-build "${UNIVERSAL_BINARY}" | grep -Eq 'minos 11\.0'; then
+            echo "Universal ${arch} slice does not target macOS 11"
+            exit 1
+        fi
+    done
     
     SOURCE_APP="${BUILD_DIR}/universal/${APP_NAME}.app"
 else
