@@ -30,7 +30,7 @@ run = "rm -rf build"
 
 [tasks.format]
 description = "Format Swift source files with swiftformat"
-run = "xcrun swift-format format --in-place **/*.swift"
+run = "swift format --in-place **/*.swift"
 
 [tasks.test]
 description = "Run unit tests"
