@@ -22,7 +22,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install ninja cmake
+          brew install mise ninja cmake
+
+      - name: Verify
+        run: mise run verify
 
       - name: Build universal PKG
         run: |
@@ -89,10 +92,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install ninja cmake
+          brew install mise ninja cmake
 
       - name: Set version from tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Verify
+        run: mise run verify
 
       - name: Build universal PKG
         run: |

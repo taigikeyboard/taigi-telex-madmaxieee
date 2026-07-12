@@ -40,6 +40,10 @@ run = "swift test"
 description = "Run fuzz tests (not included in `swift test`)"
 run = "swift run FuzzTests"
 
+[tasks.verify]
+description = "Run unit tests, deterministic bounded fuzzing, and the authoritative CMake build"
+run = "mise run test && swift run FuzzTests --iterations 10000 --max-length 50 --seed 42 && mise run build"
+
 [tasks.package]
 description = "Build and package TaigiTelex as PKG"
 run = "scripts/build_pkg.sh --universal"

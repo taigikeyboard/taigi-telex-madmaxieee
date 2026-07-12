@@ -137,6 +137,9 @@ Both modes support `ng` and `m` as vowels when no other vowels are present.
 
 ### Install dependencies
 
+Contributing requires macOS, a Swift toolchain, CMake, and Ninja. `mise` can install
+CMake and Ninja, but Swift is provided by Xcode or the Xcode Command Line Tools.
+
 ```sh
 brew install cmake ninja
 # or if you use mise
@@ -145,6 +148,10 @@ mise i
 
 ### Build
 
+Per ADR 0001, CMake is the authoritative build system for the input method. Swift
+Package Manager supports tests, fuzzing, and source tooling; it does not replace the
+CMake build.
+
 ```sh
 cmake -B build -G Ninja \
   -DARCH=arm64 \
@@ -152,6 +159,23 @@ cmake -B build -G Ninja \
 cmake --build build
 # or if you use mise
 mise run build
+```
+
+### Verify and test
+
+Run the complete pre-package verification gate, which runs unit tests, deterministic
+bounded fuzzing, and the authoritative CMake build:
+
+```sh
+mise run verify
+```
+
+Individual development commands are also available:
+
+```sh
+mise run test    # Swift unit tests
+mise run fuzz    # Fuzz harness
+mise run format  # Format Swift source files
 ```
 
 ### Install
