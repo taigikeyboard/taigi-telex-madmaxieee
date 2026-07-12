@@ -23,3 +23,17 @@ See `mise.toml` for available tasks (build, install, reload, test, format, packa
 1. After code changes: `mise run format`
 2. Test: `mise run test` (runs all tests in `test/` directory)
 3. Build: `mise run build` (builds the input method)
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the five canonical default labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Domain documentation uses a single-context layout. See `docs/agents/domain.md`.
