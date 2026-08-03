@@ -1,18 +1,32 @@
 # Tâi-gí Telex
 
-Tâi-gí Telex is a Taiwanese input method with Telex-style tone keys for macOS. It supports both **Tâi-lô (TL)** and **Pe̍h-ōe-jī (POJ)** romanization systems.
+Tâi-gí Telex is a Taiwanese input method with Telex-style tone keys for macOS.
+It supports both **Tâi-lô (TL)** and **Pe̍h-ōe-jī (POJ)** romanization systems.
 
-**Live Demo:** https://telex.kahiok.com
+**Live Demo:** <https://telex.kahiok.com>
 
 ## User Guide
 
 ### Download & Install
 
-[Download Latest Release](https://github.com/madmaxieee/taigi-telex/releases/latest) — **Recommended for most users.**
+Install with Homebrew:
 
-> **Nightly builds** are pre-release versions with the latest changes. They may be less stable. [Download here](https://github.com/madmaxieee/taigi-telex/releases/tag/nightly) if you want to test new features.
+```sh
+brew install --cask madmaxieee/tap/taigi-telex
+```
 
-#### Step 1: Install the Package
+<details>
+<summary>Alternative: install the package manually</summary>
+
+[Download Latest Release](https://github.com/madmaxieee/taigi-telex/releases/latest)
+— **Recommended for most users.**
+
+> **Nightly builds** are pre-release versions with the latest changes. They may
+> be less stable.
+> [Download here](https://github.com/madmaxieee/taigi-telex/releases/tag/nightly)
+> if you want to test new features.
+
+#### Install the Package
 
 1. Download the `TaigiTelex-x.x.x.pkg` file from the link above
 2. Double-click the downloaded `.pkg` file to start the installer
@@ -20,21 +34,25 @@ Tâi-gí Telex is a Taiwanese input method with Telex-style tone keys for macOS.
 
 **If you see "cannot be opened" or "unidentified developer":**
 
-This package isn't signed with an Apple Developer certificate, which is normal for open-source projects. To allow it:
+This package isn't signed with an Apple Developer certificate, which is normal
+for open-source projects. To allow it:
 
 1. Open **System Settings** → **Privacy & Security**
 2. Scroll to the **Security** section
 3. Click **Open Anyway** next to the message about TaigiTelex
 4. Enter your password if prompted, then confirm
 
-#### Step 2: Add the Input Method
+</details>
+
+#### Add the Input Method
 
 1. Go to **System Settings** → **Keyboard** → **Input Sources**
 2. Click the **Edit…** button (or **+** on older macOS versions)
 3. Search for **Tâi-gí Telex** under **Chinese, Traditional** and add it
 4. Select it from the input menu in your menu bar to start typing
 
-> **Tip:** If Tâi-gí Telex doesn't appear in the list, log out of your Mac and log back in, then try again.
+> **Tip:** If Tâi-gí Telex doesn't appear in the list, log out of your Mac and
+> log back in, then try again.
 
 ### Basic Rules
 
@@ -61,11 +79,13 @@ When using **POJ mode**, you can type:
 | `oo`  | `o͘`    | POJ-specific vowel (o with dot) |
 | `OO`  | `O͘`    | Capital form                    |
 
-To type literal `nn` or `oo`, press the key **three times** (e.g., `nnn` → `nn`, `ooo` → `oo`).
+To type literal `nn` or `oo`, press the key **three times** (e.g., `nnn` → `nn`,
+`ooo` → `oo`).
 
 ### Tone Marks
 
-Add tone marks by typing the corresponding key at the end of a syllable (same in both modes, except 9th tone):
+Add tone marks by typing the corresponding key at the end of a syllable (same in
+both modes, except 9th tone):
 
 | Key | Tone | Example (TL) | Example (POJ) |
 | --- | ---- | ------------ | ------------- |
@@ -126,19 +146,25 @@ Both modes support `ng` and `m` as vowels when no other vowels are present.
 
 ### Tips
 
-- Press the **same tone key twice** to type the letter itself (e.g., `avv` → `av`)
-- Press the **same consonant key twice** to type it literally (e.g., `zz` → `z`, `cc` → `c`)
-- In **POJ mode**, press a **double vowel key three times** to escape (e.g., `nnn` → `nn`, `ooo` → `oo`)
-- Non-letter characters (space, comma, period, numbers) automatically commit the current composition
+- Press the **same tone key twice** to type the letter itself (e.g., `avv` →
+  `av`)
+- Press the **same consonant key twice** to type it literally (e.g., `zz` → `z`,
+  `cc` → `c`)
+- In **POJ mode**, press a **double vowel key three times** to escape (e.g.,
+  `nnn` → `nn`, `ooo` → `oo`)
+- Non-letter characters (space, comma, period, numbers) automatically commit the
+  current composition
 - Press return key to commit current buffer
-- Use **Caps Lock** to switch between Tâi-gí Telex modes and English, like any Chinese input method
+- Use **Caps Lock** to switch between Tâi-gí Telex modes and English, like any
+  Chinese input method
 
 ## Contribution Guide
 
 ### Install dependencies
 
-Contributing requires macOS, a Swift toolchain, CMake, and Ninja. `mise` can install
-CMake and Ninja, but Swift is provided by Xcode or the Xcode Command Line Tools.
+Contributing requires macOS, a Swift toolchain, CMake, and Ninja. `mise` can
+install CMake and Ninja, but Swift is provided by Xcode or the Xcode Command
+Line Tools.
 
 ```sh
 brew install cmake ninja
@@ -148,9 +174,9 @@ mise i
 
 ### Build
 
-Per ADR 0001, CMake is the authoritative build system for the input method. Swift
-Package Manager supports tests, fuzzing, and source tooling; it does not replace the
-CMake build.
+Per ADR 0001, CMake is the authoritative build system for the input method.
+Swift Package Manager supports tests, fuzzing, and source tooling; it does not
+replace the CMake build.
 
 ```sh
 cmake -B build -G Ninja \
@@ -163,8 +189,8 @@ mise run build
 
 ### Verify and test
 
-Run the complete pre-package verification gate, which runs unit tests, deterministic
-bounded fuzzing, and the authoritative CMake build:
+Run the complete pre-package verification gate, which runs unit tests,
+deterministic bounded fuzzing, and the authoritative CMake build:
 
 ```sh
 mise run verify
@@ -186,8 +212,11 @@ cmake --install build
 mise run install
 ```
 
-- On first time installation, log out and log back in, then in `System Settings` -> `Keyboard` -> `Input Sources` (Edit), `Tâi-gí Telex` from `Chinese, Traditional`.
-- On further installations, switch to another input method, `pkill TaigiTelex`, then switch back.
+- On first time installation, log out and log back in, then in `System Settings`
+  -> `Keyboard` -> `Input Sources` (Edit), `Tâi-gí Telex` from
+  `Chinese, Traditional`.
+- On further installations, switch to another input method, `pkill TaigiTelex`,
+  then switch back.
 
 ### Package
 
@@ -201,5 +230,7 @@ The PKG will be created at `build/TaigiTelex-x.x.x.pkg`.
 
 ## Acknowledgement
 
-- [toyimk](https://github.com/eagleoflqj/toyimk) Thanks toyimk for the build system setup
-- [macSKK](https://github.com/mtgto/macSKK) Thanks macSKK for architecture reference
+- [toyimk](https://github.com/eagleoflqj/toyimk) Thanks toyimk for the build
+  system setup
+- [macSKK](https://github.com/mtgto/macSKK) Thanks macSKK for architecture
+  reference
